@@ -80,7 +80,7 @@ class VaultMindRAG:
         sources = []
         for doc in response.get('source_documents', []):
             file_name = os.path.basename(doc.metadata.get('source', 'Unknown_Document.pdf'))
-            page_num = doc.metadata.get('page', 'Unknown')
+            page_num = int(doc.metadata.get('page', -1)) + 1 if 'page' in doc.metadata else 'Unknown'
             source_info = f"📄 {file_name} (Page {page_num})"
             if source_info not in sources:
                 sources.append(source_info)
