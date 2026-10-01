@@ -7,11 +7,14 @@
 
 > VaultMind is a fully offline, privacy-first Retrieval-Augmented Generation (RAG) system. It leverages the computing power of your local GPU (e.g., RTX 2060) to read, index, and answer questions based on your private PDF documents without sending a single byte of data to the cloud.
 
-## ✨ Premium Features
-- **Zero-Cloud Architecture:** 100% offline. Total privacy for your sensitive study materials, research papers, or corporate documents.
+## ✨ Premium Enterprise Features
+- **Zero-Cloud Architecture:** 100% offline. Total privacy for your sensitive study materials, research papers, or corporate documents. (ChromaDB telemetry explicitly blocked).
+- **True Conversational Memory:** Implements a Window Buffer Memory (`k=3`) to maintain chat context like ChatGPT, intelligently preventing VRAM Context Window Overflow.
+- **Dynamic AI Model Switching:** Seamlessly switch the local LLM brain (Llama-3, Mistral, Gemma, Phi-3) directly from the UI without restarting the server.
+- **Advanced Document Parsing:** Uses `pdfplumber` to cleanly extract complex academic layouts, tables, and columns, while rejecting empty/scanned pages to prevent database crashes.
 - **Precision Page Citations:** When the AI answers a question, it explicitly tells you which document and which exact page it got the information from.
 - **FastEmbed Optimization:** Uses highly optimized `BAAI/bge-small-en-v1.5` embeddings that run instantly on the CPU, saving all your precious VRAM for the LLM.
-- **Enterprise Dashboard:** A beautiful, responsive chat interface built with Streamlit and styled with custom Matrix-green CSS.
+- **Enterprise Dashboard:** A beautiful, responsive chat interface built with Streamlit featuring one-click Markdown Chat Export.
 
 ## 🏗️ System Architecture
 
