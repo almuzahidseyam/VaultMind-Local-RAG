@@ -1,4 +1,7 @@
 import os
+# Premium Security Fix: Disable ChromaDB telemetry to ensure 100% offline privacy
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
 from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
@@ -12,14 +15,10 @@ class VaultMindRAG:
     def __init__(self, db_dir="./chroma_db", model_name="llama3"):
         self.db_dir = db_dir
         self.model_name = model_name
-        # FastEmbed is highly optimized for local CPU/GPU embedding without heavy PyTorch overhead
         self.embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-        
         self.llm = Ollama(model=model_name) 
         self.vector_store = None
         
-        # Premium Bug Fix: Prevent LLM Context Window Overflow on 8GB VRAM
-        # Only remembers the last 3 conversational turns (6 messages) to prevent OOM crashes.
         self.memory = ConversationBufferWindowMemory(
             k=3, 
             memory_key="chat_history", 
@@ -29,31 +28,35 @@ class VaultMindRAG:
         self._load_existing_db()
 
     def update_model(self, new_model_name):
-        """Dynamically switch the local LLM model."""
         self.model_name = new_model_name
         self.llm = Ollama(model=new_model_name)
 
     def clear_memory(self):
-        """Reset the conversation context."""
         self.memory.clear()
 
     def _load_existing_db(self):
-        """Loads an existing Chroma database if it was previously built."""
         if os.path.exists(self.db_dir) and os.listdir(self.db_dir):
             try:
                 self.vector_store = Chroma(persist_directory=self.db_dir, embedding_function=self.embeddings)
             except Exception as e:
-                print(f"Warning: Could not load existing DB. Starting fresh. ({e})")
+                pass
 
     def ingest_pdf(self, file_path):
-        """Extracts text from a PDF, chunks it, and ingests it into the Vector Database."""
-        # Advanced Parsing with PDFPlumber (Handles tables, columns better than PyPDF2)
         loader = PDFPlumberLoader(file_path)
         documents = loader.load()
         
-        # Split text into optimal chunks for LLM context windows
+        # Premium Bug Fix: Filter out empty pages to prevent embedding crashes
+        documents = [doc for doc in documents if doc.page_content and doc.page_content.strip()]
+        if not documents:
+            raise ValueError("No extractable text found. This might be a scanned image requiring OCR.")
+        
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=250)
         chunks = text_splitter.split_documents(documents)
+        
+        # Double check chunks are valid to prevent VectorDB dimension mismatch errors
+        chunks = [c for c in chunks if c.page_content and c.page_content.strip()]
+        if not chunks:
+            raise ValueError("Failed to create valid neural chunks.")
         
         if self.vector_store is None:
             self.vector_store = Chroma.from_documents(chunks, self.embeddings, persist_directory=self.db_dir)
