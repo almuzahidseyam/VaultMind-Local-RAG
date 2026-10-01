@@ -1,6 +1,8 @@
 import os
 # Premium Security Fix: Disable ChromaDB telemetry to ensure 100% offline privacy
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
+# Deep-Tech Fix: Prevent HuggingFace Tokenizer deadlocks when forking processes in Streamlit
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -68,6 +70,9 @@ class VaultMindRAG:
 
     def ask_question(self, query):
         """Retrieves relevant chunks and generates a conversationally-aware answer."""
+        if not query or not query.strip():
+            return "⚠️ Please enter a valid question.", []
+            
         if not self.vector_store:
             return "⚠️ System Error: No documents indexed in the Vault. Please upload a PDF first.", []
         
