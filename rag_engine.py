@@ -5,7 +5,7 @@ from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.llms import Ollama
 from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import PromptTemplate
 
 class VaultMindRAG:
@@ -18,8 +18,10 @@ class VaultMindRAG:
         self.llm = Ollama(model=model_name) 
         self.vector_store = None
         
-        # Premium Feature: True Conversational Memory
-        self.memory = ConversationBufferMemory(
+        # Premium Bug Fix: Prevent LLM Context Window Overflow on 8GB VRAM
+        # Only remembers the last 3 conversational turns (6 messages) to prevent OOM crashes.
+        self.memory = ConversationBufferWindowMemory(
+            k=3, 
             memory_key="chat_history", 
             return_messages=True, 
             output_key="answer"
