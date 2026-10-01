@@ -2,6 +2,6 @@ streamlit>=1.32.0
 langchain>=0.1.13
 langchain-community>=0.0.29
 chromadb>=0.4.24
-pypdf>=4.1.0
+pdfplumber>=0.11.0
 sentence-transformers>=2.5.1
 fastembed>=0.2.6

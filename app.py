@@ -3,6 +3,7 @@ import tempfile
 import os
 from rag_engine import VaultMindRAG
 import time
+import pandas as pd
 
 # --- Page Config ---
 st.set_page_config(page_title="VaultMind Local RAG", page_icon="🧠", layout="wide")
@@ -20,7 +21,7 @@ st.markdown("""
     .stButton>button:hover {background-color: #00FF41; color: #000000;}
     .source-box {
         background-color: #0d1117; padding: 10px; border-radius: 5px; 
-        border-left: 3px solid #00FF41; font-family: monospace; font-size: 0.9em;
+        border-left: 3px solid #00FF41; font-family: monospace; font-size: 0.9em; margin-top: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -34,16 +35,28 @@ rag = initialize_rag()
 
 # --- Main Layout ---
 st.title("🧠 VaultMind: Hyper-Local RAG Intelligence")
-st.markdown("A completely offline, secure, and locally-hosted AI assistant powered by your RTX 2060 GPU and Ollama.")
+st.markdown("A completely offline, secure, and locally-hosted AI assistant with conversational memory, powered by your RTX 2060 GPU.")
 
-# --- Sidebar (Ingestion) ---
+# --- Sidebar (Ingestion & Settings) ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/9150/9150095.png", width=120)
+    st.title("⚙️ Vault Config")
+    
+    selected_model = st.selectbox("🤖 Local Neural Model", ["llama3", "mistral", "gemma", "phi3"])
+    if selected_model != rag.model_name:
+        rag.update_model(selected_model)
+        st.success(f"Switched engine to {selected_model}")
+        
+    if st.button("🗑️ Clear Chat Memory"):
+        rag.clear_memory()
+        st.session_state.messages = [{"role": "assistant", "content": "Memory wiped. Ready for a new topic.", "sources": []}]
+        st.rerun()
+
+    st.markdown("---")
     st.title("📚 Knowledge Vault")
+    st.markdown("Upload your study materials or private documents. They are parsed locally using `pdfplumber` and sliced into semantic chunks.")
     
-    st.markdown("Upload your study materials, PDFs, or private documents. The system will slice them into semantic chunks and store them in the local Chroma vector database.")
-    
-    uploaded_files = st.file_uploader("Ingest PDFs", type="pdf", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Ingest High-Res PDFs", type="pdf", accept_multiple_files=True)
     
     if st.button("🚀 Process Documents", type="primary") and uploaded_files:
         with st.spinner("Ingesting knowledge into Vector Database..."):
@@ -51,7 +64,6 @@ with st.sidebar:
             progress_bar = st.progress(0)
             
             for i, uploaded_file in enumerate(uploaded_files):
-                # Secure Temp File Handling
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tfile:
                     tfile.write(uploaded_file.read())
                     temp_path = tfile.name
@@ -71,12 +83,16 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption("Engine: LangChain + ChromaDB")
-    st.caption("LLM: Ollama (Llama-3 8B)")
     st.caption("Embeddings: FastEmbed (BGE-Small)")
+    
+    # Export Chat Feature
+    if st.session_state.get("messages") and len(st.session_state.messages) > 1:
+        export_str = "\n\n".join([f"**{m['role'].capitalize()}**: {m['content']}" for m in st.session_state.messages])
+        st.download_button("📥 Export Chat Log (MD)", export_str, "VaultMind_Chat.md", "text/markdown")
 
 # --- Chat Interface ---
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Welcome to VaultMind. I have access to your local Vector Database. Ask me anything about your documents.", "sources": []}]
+    st.session_state.messages = [{"role": "assistant", "content": "Welcome to VaultMind. I have access to your local Vector Database and remember our conversation. Ask me anything.", "sources": []}]
 
 # Render chat history
 for msg in st.session_state.messages:
@@ -96,7 +112,7 @@ if prompt := st.chat_input("Query your local intelligence..."):
 
     # Generate Assistant Response
     with st.chat_message("assistant"):
-        with st.spinner("Searching Vector Vault and Synthesizing Answer..."):
+        with st.spinner(f"Synthesizing Answer via {selected_model}..."):
             answer, sources = rag.ask_question(prompt)
             
             st.markdown(answer)
